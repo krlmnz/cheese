@@ -1,0 +1,164 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const dialogueElement = document.getElementById('dialogue');
+    const dialogues = {
+        opening: [
+            "I'm Millie from Bologna Lane, the chunkiest and sassiest opponent you'll meet. Ready to get schooled?",
+            "Let's play! Just know, I'm only here for the snacks, not your whining.",
+            "I might see in grey, but my moves will leave you green with envy!"
+        ],
+        aggressive: [
+            "Brace yourself! This chunky paw is about to wreck your strategy.",
+            "Feel that? It's the sound of your game falling apart. Deal with it.",
+            "Here comes the pain, and I ain't talking about my kibble!"
+        ],
+        defensive: [
+            "Nice try! But this chunk's staying put, just like at dinner time.",
+            "Oh, you thought you had me? Cute. Try harder.",
+            "Blocking your moves like I block the doorway to the fridge."
+        ],
+        captures: [
+            "Gotcha! That piece is now my snack. Deal with it.",
+            "Chomp! Another one down. Keep 'em coming!",
+            "Say goodbye to your piece, and hello to my victory snack!"
+        ],
+        check: [
+            "Check yourself before I wreck your board. Got any treats?",
+            "Check! Almost as thrilling as dinner time. Almost.",
+            "You're in check! Now, where's my treat?"
+        ],
+        checkmate: [
+            "Checkmate! Now, hand over the snacks.",
+            "Game over! Time for my victory treats, human.",
+            "I win! Now, get me some food before I get hangry."
+        ],
+        blunders: [
+            "Oops, did I do that? Whatever, where’s my food?",
+            "That move was almost as clumsy as me chasing my own tail. Almost.",
+            "Blunder? More like a strategic snack break."
+        ],
+        fun: [
+            "Scooby Doo? Please, I'm the real star here, darling.",
+            "Playing chess makes me hungry. Got any snacks, or should I find some myself?",
+            "I might only see grey, but I see victory in every shade. Deal with it."
+        ]
+    };
+
+    function getDialogue(type) {
+        const phrases = dialogues[type];
+        return phrases[Math.floor(Math.random() * phrases.length)];
+    }
+
+    function setDialogue(type) {
+        dialogueElement.textContent = getDialogue(type);
+        document.getElementById('millie').querySelector('img').style.transform = 'rotate(360deg)';
+        setTimeout(() => {
+            document.getElementById('millie').querySelector('img').style.transform = 'rotate(0deg)';
+        }, 500);
+    }
+
+    setDialogue('opening');
+
+    const chessboard = document.getElementById('chessboard');
+    const squares = 8;
+    const board = new Chess();
+
+    let selectedSquare = null;
+
+    function createChessboard() {
+        chessboard.innerHTML = '';
+        for (let i = 0; i < squares * squares; i++) {
+            const square = document.createElement('div');
+            square.classList.add('square');
+            square.classList.add((i + Math.floor(i / squares)) % 2 === 0 ? 'white' : 'black');
+            square.dataset.index = i;
+            chessboard.appendChild(square);
+        }
+    }
+
+    function updateChessboard() {
+        const pieces = board.board();
+        document.querySelectorAll('.square').forEach((square, index) => {
+            const piece = pieces[Math.floor(index / squares)][index % squares];
+            square.innerHTML = '';
+            if (piece) {
+                const pieceElement = document.createElement('div');
+                pieceElement.classList.add(piece.color, 'piece');
+                pieceElement.innerHTML = getFontAwesomeIcon(piece.type, piece.color);
+                square.appendChild(pieceElement);
+            }
+        });
+    }
+
+    function getFontAwesomeIcon(piece, color) {
+        const iconMap = {
+            p: 'fa-chess-pawn',
+            r: 'fa-chess-rook',
+            n: 'fa-chess-knight',
+            b: 'fa-chess-bishop',
+            q: 'fa-chess-queen',
+            k: 'fa-chess-king'
+        };
+        const icon = iconMap[piece.toLowerCase()];
+        return `<i class="fas ${icon} ${color === 'w' ? 'fa-lg' : 'fa-lg'}"></i>`;
+    }
+
+    function highlightMoves(square) {
+        const moves = board.moves({ square, verbose: true });
+        moves.forEach(move => {
+            const targetIndex = (8 - move.to[1]) * 8 + 'abcdefgh'.indexOf(move.to[0]);
+            document.querySelector(`.square[data-index='${targetIndex}']`).classList.add('highlight');
+        });
+    }
+
+    function clearHighlights() {
+        document.querySelectorAll('.highlight').forEach(square => {
+            square.classList.remove('highlight');
+        });
+    }
+
+    chessboard.addEventListener('click', (event) => {
+        const squareIndex = event.target.dataset.index || event.target.parentElement.dataset.index;
+        if (squareIndex !== undefined) {
+            const row = Math.floor(squareIndex / squares);
+            const col = squareIndex % squares;
+            const square = `${'abcdefgh'[col]}${8 - row}`;
+            const piece = board.get(square);
+
+            if (selectedSquare && piece && piece.color === board.turn()) {
+                clearHighlights();
+                selectedSquare = square;
+                highlightMoves(square);
+            } else if (selectedSquare) {
+                const move = board.move({
+                    from: selectedSquare,
+                    to: square,
+                    promotion: 'q'
+                });
+
+                if (move) {
+                    updateChessboard();
+                    clearHighlights();
+                    selectedSquare = null;
+                    const types = ['aggressive', 'defensive', 'captures', 'check', 'checkmate', 'blunders', 'fun'];
+                    setDialogue(types[Math.floor(Math.random() * types.length)]);
+                } else {
+                    setDialogue('blunders');
+                    clearHighlights();
+                    selectedSquare = null;
+                }
+            } else if (piece && piece.color === board.turn()) {
+                selectedSquare = square;
+                highlightMoves(square);
+            }
+        }
+    });
+
+    document.getElementById('restart-button').addEventListener('click', () => {
+        board.reset();
+        updateChessboard();
+        setDialogue('opening');
+    });
+
+    createChessboard();
+    updateChessboard();
+});
